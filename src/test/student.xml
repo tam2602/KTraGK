@@ -1,13 +1,26 @@
-<?xml version="1.0"encoding="UTF-8"?>
-<Student>
-    <Id>S001</Id>
-    <Name>John Doe</Name>
-    <Address>123 Main Street</Address>
-    <DateOfBirth>1990-01-01</DateOfBirth>
-</Student>
-<Student>
-    <Id>S002</Id>
-    <Name>Jane Smith</Name>
-    <Address>456 Elm Street</Address>
-    <DateOfBirth>1995-05-15</DateOfBirth>
-</Student>
+<Students>
+    <Student>
+        <Id>1</Id>
+        <Name>Tran Minh Tam</Name>
+        <Address>Quang Tri</Address>
+        <DateOfBirth>2005-02-26</DateOfBirth>
+    </Student>
+    <Student>
+        <Id>2</Id>
+        <Name>Nguyen Van A</Name>
+        <Address>Quang Tri</Address>
+        <DateOfBirth>2005-02-26</DateOfBirth>
+    </Student>
+    <Student>
+        <Id>3</Id>
+        <Name>Le Van B</Name>
+        <Address>Quang Tri</Address>
+        <DateOfBirth>2005-02-26</DateOfBirth>
+    </Student>
+    <Student>
+        <Id>4</Id>
+        <Name>Nguyen Van Teo</Name>
+        <Address>Quang Tri</Address>
+        <DateOfBirth>2005-02-26</DateOfBirth>
+    </Student>
+</Students>

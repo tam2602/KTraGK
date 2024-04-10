@@ -1,184 +1,157 @@
 package test;
 
 import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.Period;
-import java.util.Base64;
-import java.util.Scanner;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
 
 public class Main {
-    public static void main(String[] args) {
-        StudentDataReader studentDataReader = new StudentDataReader();
-        Thread thread1 = new Thread(studentDataReader);
-        thread1.start();
-        try {
-            thread1.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
 
-        Student student = studentDataReader.getStudent();
-        if (student != null) {
-            Thread thread2 = new Thread(new AgeCalculator(student));
-            Thread thread3 = new Thread(new PrimeChecker(student));
-            thread2.start();
-            thread3.start();
+    public static void main(String[] args) {
+        final List<Student> students = new ArrayList<>();
+        final CountDownLatch latch = new CountDownLatch(1);
+
+        Thread thread1 = new Thread(() -> {
+            students.addAll(parseStudentFromXML("C:\\Java\\JavaGK\\src\\test\\student.xml"));
+            latch.countDown();
+        });
+
+        Thread thread2 = new Thread(() -> {
             try {
-                thread2.join();
-                thread3.join();
+                latch.await();
+                students.forEach(student -> {
+                    int age = student.tinhTuoi();
+                    String mahoaTuoi = student.mahoaTuoi(age);
+                });
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        });
 
-            ResultWriter resultWriter = new ResultWriter();
-            resultWriter.writeResultToFile(student);
+        thread1.start();
+        thread2.start();
 
-            // Đọc kết quả từ file kq.xml
-            readResultFromFile();
-        } else {
-            System.out.println("Không có dữ liệu sinh viên.");
-        }
-    }
-
-    public static void readResultFromFile() {
         try {
-            String content = new String(Files.readAllBytes(Paths.get("kq.xml")));
-            System.out.println("Kết quả:");
-            System.out.println(content);
-        } catch (IOException e) {
+            thread1.join();
+            thread2.join();
+            writeXML(students, "C:\\Java\\JavaGK\\src\\test\\kq.xml");
+        } catch (InterruptedException e) {
             e.printStackTrace();
         }
     }
-}
 
-class StudentDataReader implements Runnable {
-    private Student student;
-
-    @Override
-    public void run() {
+    private static List<Student> parseStudentFromXML(String filePath) {
+        List<Student> students = new ArrayList<>();
+        File xmlFile = new File(filePath);
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
         try {
-            File file = new File("student.xml");
-            Scanner scanner = new Scanner(file);
-
-            while (scanner.hasNextLine()) {
-                String line = scanner.nextLine();
-                if (line.contains("<Student>")) {
-                    student = new Student();
-                } else if (line.contains("<Id>")) {
-                    student.setId(line.substring(line.indexOf(">") + 1, line.lastIndexOf("<")));
-                } else if (line.contains("<Name>")) {
-                    student.setName(line.substring(line.indexOf(">") + 1, line.lastIndexOf("<")));
-                } else if (line.contains("<Address>")) {
-                    student.setAddress(line.substring(line.indexOf(">") + 1, line.lastIndexOf("<")));
-                } else if (line.contains("<DateOfBirth>")) {
-                    student.setDateOfBirth(line.substring(line.indexOf(">") + 1, line.lastIndexOf("<")));
-                }
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(xmlFile);
+            doc.getDocumentElement().normalize();
+            NodeList nList = doc.getElementsByTagName("Student");
+            for (int temp = 0; temp < nList.getLength(); temp++) {
+                Element eElement = (Element) nList.item(temp);
+                String id = eElement.getElementsByTagName("Id").item(0).getTextContent();
+                String name = eElement.getElementsByTagName("Name").item(0).getTextContent();
+                String address = eElement.getElementsByTagName("Address").item(0).getTextContent();
+                String dob = eElement.getElementsByTagName("DateOfBirth").item(0).getTextContent();
+                LocalDate dateOfBirth = LocalDate.parse(dob, DateTimeFormatter.ISO_LOCAL_DATE);
+                students.add(new Student(id, name, address, dateOfBirth));
             }
-            scanner.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return students;
+    }
+
+
+    private static int sumDigits(int number) {
+        int sum = 0;
+        while (number > 0) {
+            sum += number % 10;
+            number /= 10;
+        }
+        return sum;
+    }
+
+    private static void writeXML(List<Student> students, String filePath) {
+        try {
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.newDocument();
+            Element rootElement = doc.createElement("class");
+            doc.appendChild(rootElement);
+
+            for (Student student : students) {
+                Element studentElement = doc.createElement("student");
+                rootElement.appendChild(studentElement);
+                studentElement.setAttribute("id", student.getId());
+                appendChildElement(doc, studentElement, "name", student.getName());
+                appendChildElement(doc, studentElement, "address", student.getAddress());
+                appendChildElement(doc, studentElement, "dob", student.getNgaySinh().toString());
+                appendChildElement(doc, studentElement, "age", String.valueOf(student.tinhTuoi()));
+                appendChildElement(doc, studentElement, "encodedAge", student.getTuoiMaHoa()); 
+                appendChildElement(doc, studentElement, "isDigitPrime", String.valueOf(student.getSoNguyenTo())); 
+            }
+
+
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            DOMSource source = new DOMSource(doc);
+            StreamResult result = new StreamResult(new File(filePath));
+            transformer.transform(source, result);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    public Student getStudent() {
-        return student;
+    private static void appendChildElement(Document doc, Element parent, String tagName, String textContent) {
+        Element child = doc.createElement(tagName);
+        child.appendChild(doc.createTextNode(textContent));
+        parent.appendChild(child);
     }
 }
-
-class AgeCalculator implements Runnable {
-    private Student student;
-
-    public AgeCalculator(Student student) {
-        this.student = student;
-    }
-
-    @Override
-    public void run() {
-        if (student != null) {
-            LocalDate birthDate = LocalDate.parse(student.getDateOfBirth());
-            LocalDate currentDate = LocalDate.now();
-            Period period = Period.between(birthDate, currentDate);
-            student.setAge(period.getYears());
-
-            // Mã hoá ngày sinh
-            byte[] encodedBytes = Base64.getEncoder().encode(student.getDateOfBirth().getBytes());
-            student.setEncodedDateOfBirth(new String(encodedBytes));
-        }
-    }
-}
-
-class PrimeChecker implements Runnable {
-    private Student student;
-
-    public PrimeChecker(Student student) {
-        this.student = student;
-    }
-
-    @Override
-    public void run() {
-        if (student != null) {
-            String dob = student.getDateOfBirth();
-            int sum = 0;
-            for (int i = 0; i < dob.length(); i++) {
-                if (Character.isDigit(dob.charAt(i))) {
-                    sum += Character.getNumericValue(dob.charAt(i));
-                }
-            }
-            student.setSumIsPrime(isPrime(sum));
-        }
-    }
-
-    private boolean isPrime(int num) {
-        if (num <= 1) {
-            return false;
-        }
-        for (int i = 2; i <= Math.sqrt(num); i++) {
-            if (num % i == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-}
-
-class ResultWriter {
-    public void writeResultToFile(Student student) {
-        try {
-            FileWriter writer = new FileWriter("kq.xml");
-            writer.write("<Student>\n");
-            writer.write("\t<Age>" + student.getAge() + "</Age>\n");
-            writer.write("\t<SumIsPrime>" + student.isSumPrime() + "</SumIsPrime>\n");
-            writer.write("\t<EncodedDateOfBirth>" + student.getEncodedDateOfBirth() + "</EncodedDateOfBirth>\n");
-            writer.write("</Student>");
-            writer.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-}
-
 class Student {
     private String id;
     private String name;
     private String address;
-    private String dateOfBirth;
-    private int age;
-    private boolean sumIsPrime;
-    private String encodedDateOfBirth;
+    private LocalDate ngaysinh;
+    private String mahoatuoi;
+    private boolean songuyento;
 
-    // Constructors, getters, setters, and other methods
-
-    public String getEncodedDateOfBirth() {
-        return encodedDateOfBirth;
+    public Student(String id, String name, String address, LocalDate ngaysinh) {
+        if (id == null || name == null || address == null || ngaysinh == null) {
+            throw new IllegalArgumentException("Missing attribute");
+        }
+        this.id = id;
+        this.name = name;
+        this.address = address;
+        this.ngaysinh = ngaysinh;
     }
 
-    public void setEncodedDateOfBirth(String encodedDateOfBirth) {
-        this.encodedDateOfBirth = encodedDateOfBirth;
+    public int tinhTuoi() {
+        return Period.between(this.ngaysinh, LocalDate.now()).getYears();
     }
+
+    public String mahoaTuoi(int age) {
+        return new StringBuilder().append(age).reverse().toString();
+    }
+
+
 
     public String getId() {
         return id;
@@ -204,27 +177,26 @@ class Student {
         this.address = address;
     }
 
-    public String getDateOfBirth() {
-        return dateOfBirth;
+    public LocalDate getNgaySinh() {
+        return ngaysinh;
     }
 
-    public void setDateOfBirth(String dateOfBirth) {
-        this.dateOfBirth = dateOfBirth;
+    public void setNgaySinh(LocalDate dob) {
+        this.ngaysinh = dob;
     }
 
-    public int getAge() {
-        return age;
+    public String getTuoiMaHoa() {
+        if (this.mahoatuoi == null) {
+            this.mahoatuoi = mahoaTuoi(tinhTuoi());
+        }
+        return this.mahoatuoi;
     }
 
-    public void setAge(int age) {
-        this.age = age;
+    public boolean getSoNguyenTo() {
+        return this.songuyento;
     }
 
-    public boolean isSumPrime() {
-        return sumIsPrime;
-    }
 
-    public void setSumIsPrime(boolean sumIsPrime) {
-        this.sumIsPrime = sumIsPrime;
-    }
 }
+
+

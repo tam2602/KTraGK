@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<class>
+    <student id="1">
+        <name>Tran Minh Tam</name>
+        <address>Quang Tri</address>
+        <dob>2005-02-26</dob>
+        <age>19</age>
+        <encodedAge>91</encodedAge>
+        <isDigitPrime>false</isDigitPrime>
+    </student>
+    <student id="2">
+        <name>Nguyen Van A</name>
+        <address>Quang Tri</address>
+        <dob>2005-02-26</dob>
+        <age>19</age>
+        <encodedAge>91</encodedAge>
+        <isDigitPrime>false</isDigitPrime>
+    </student>
+    <student id="3">
+        <name>Le Van B</name>
+        <address>Quang Tri</address>
+        <dob>2005-02-26</dob>
+        <age>19</age>
+        <encodedAge>91</encodedAge>
+        <isDigitPrime>false</isDigitPrime>
+    </student>
+    <student id="4">
+        <name>Nguyen Van Teo</name>
+        <address>Quang Tri</address>
+        <dob>2005-02-26</dob>
+        <age>19</age>
+        <encodedAge>91</encodedAge>
+        <isDigitPrime>false</isDigitPrime>
+    </student>
+</class>
